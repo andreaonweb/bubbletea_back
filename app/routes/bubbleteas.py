@@ -51,6 +51,7 @@ def create(bubble_tea: BubbleTea):
                 (bubble_tea.name, bubble_tea.temperature, bubble_tea.price, bubble_tea.active)
             )
             conn.commit()
+            bubble_tea.id = cur.lastrowid  
             return {"ok": True, "result": bubble_tea}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -70,6 +71,7 @@ def update(id: int, bubble_tea: BubbleTea):
                 (bubble_tea.name, bubble_tea.temperature, bubble_tea.price, bubble_tea.active, id)
             )
             conn.commit()
+            bubble_tea.id = id
             return {"ok": True, "result": bubble_tea}
     except Exception as e:
         return {"ok": False, "error": str(e)}
