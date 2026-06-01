@@ -1,95 +1,51 @@
-from fastapi import APIRouter
-from app.models.bubbletea import BubbleTea
-from app.db.connection import get_db_connection
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.models.bubbletea import BubbleTea, BubbleTeaORM
+from app.db.connection import get_db
 
 router = APIRouter(prefix="/bubbleteas", tags=["bubbleteas"])
 
 
 @router.get("")
-def get_all():
-    conn = get_db_connection()
-    if conn is None:
-        return {"ok": False, "error": "No se pudo conectar a la base de datos"}
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM bubbleteas")
-            rows = cur.fetchall()
-            return {"ok": True, "result": rows}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-    finally:
-        conn.close()
+def get_all(db: Session = Depends(get_db)):
+    rows = db.query(BubbleTeaORM).all()
+    return {"ok": True, "result": rows}
 
 
 @router.get("/{id}")
-def get_by_id(id: int):
-    conn = get_db_connection()
-    if conn is None:
-        return {"ok": False, "error": "No se pudo conectar a la base de datos"}
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM bubbleteas WHERE id = %s", (id,))
-            row = cur.fetchone()
-            if row is None:
-                return {"ok": False, "error": f"No se encontró ningún bubbletea con id {id}"}
-            return {"ok": True, "result": row}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-    finally:
-        conn.close()
+def get_by_id(id: int, db: Session = Depends(get_db)):
+    row = db.query(BubbleTeaORM).filter(BubbleTeaORM.id == id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No se encontró ningún bubbletea con id {id}")
+    return {"ok": True, "result": row}
 
 
 @router.post("")
-def create(bubble_tea: BubbleTea):
-    conn = get_db_connection()
-    if conn is None:
-        return {"ok": False, "error": "No se pudo conectar a la base de datos"}
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO bubbleteas (name, temperature, price, active) VALUES (%s, %s, %s, %s)",
-                (bubble_tea.name, bubble_tea.temperature, bubble_tea.price, bubble_tea.active)
-            )
-            conn.commit()
-            bubble_tea.id = cur.lastrowid  
-            return {"ok": True, "result": bubble_tea}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-    finally:
-        conn.close()
+def create(bubble_tea: BubbleTea, db: Session = Depends(get_db)):
+    new_bt = BubbleTeaORM(**bubble_tea.model_dump(exclude={"id"}))
+    db.add(new_bt)
+    db.commit()
+    db.refresh(new_bt)
+    return {"ok": True, "result": new_bt}
 
 
 @router.put("/{id}")
-def update(id: int, bubble_tea: BubbleTea):
-    conn = get_db_connection()
-    if conn is None:
-        return {"ok": False, "error": "No se pudo conectar a la base de datos"}
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE bubbleteas SET name=%s, temperature=%s, price=%s, active=%s WHERE id=%s",
-                (bubble_tea.name, bubble_tea.temperature, bubble_tea.price, bubble_tea.active, id)
-            )
-            conn.commit()
-            bubble_tea.id = id
-            return {"ok": True, "result": bubble_tea}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-    finally:
-        conn.close()
+def update(id: int, bubble_tea: BubbleTea, db: Session = Depends(get_db)):
+    row = db.query(BubbleTeaORM).filter(BubbleTeaORM.id == id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No se encontró ningún bubbletea con id {id}")
+    for key, value in bubble_tea.model_dump(exclude={"id"}).items():
+        setattr(row, key, value)
+    db.commit()
+    db.refresh(row)
+    return {"ok": True, "result": row}
 
 
 @router.delete("/{id}")
-def delete(id: int):
-    conn = get_db_connection()
-    if conn is None:
-        return {"ok": False, "error": "No se pudo conectar a la base de datos"}
-    try:
-        with conn.cursor() as cur:
-            cur.execute("UPDATE bubbleteas SET active = FALSE WHERE id = %s", (id,))
-            conn.commit()
-            return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-    finally:
-        conn.close()
+def delete(id: int, db: Session = Depends(get_db)):
+    row = db.query(BubbleTeaORM).filter(BubbleTeaORM.id == id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No se encontró ningún bubbletea con id {id}")
+    row.active = False
+    db.commit()
+    return {"ok": True}

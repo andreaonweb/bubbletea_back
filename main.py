@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.bubbleteas import router as bubbleteas_router
+from app.auth import verify_token 
 
 app = FastAPI(title="BubbleTea Store API")
 
@@ -12,8 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(bubbleteas_router)
-
+app.include_router(bubbleteas_router, dependencies=[Depends(verify_token)])
 
 @app.get("/")
 def root():
