@@ -4,7 +4,7 @@ from firebase_admin import credentials, auth
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Inicializar Firebase Admin SDK una sola vez
+
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _SERVICE_ACCOUNT_PATH = os.path.join(_BASE_DIR, "..", "secrets", "serviceAccount.json")
 
